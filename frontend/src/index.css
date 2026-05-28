@@ -1,0 +1,47 @@
+:root {
+  /* 🎨 PALETA DE COLORES VIAVIA (Estilo Skyscanner) */
+  --bg-app: #f1f2f8; /* Gris muy clarito para el fondo general */
+  --bg-nav: #05203c; /* Azul marino oscuro para la cabecera */
+  --primary: #0062e3; /* Azul eléctrico vibrante */
+  --primary-hover: #004cba;
+  --text-main: #111236; /* Azul casi negro para textos principales */
+  --text-muted: #687385; /* Gris para textos secundarios */
+  
+  /* 📐 FORMAS Y SOMBRAS */
+  --card-bg: #ffffff;
+  --radius-card: 12px;
+  --radius-btn: 24px; /* Forma de píldora */
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+  
+  --sans: 'SF Pro Display', system-ui, -apple-system, Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 🚨 CORRECCIÓN CLAVE: Eliminado el límite de 1126px para que sea full-width */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tipografía general */
+h1, h2, h3 {
+  font-family: var(--sans);
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+  margin-top: 0;
+}
+
+h1 { font-size: 42px; margin-bottom: 24px; }
+h2 { font-size: 24px; margin-bottom: 16px; }
+p { margin: 0; }

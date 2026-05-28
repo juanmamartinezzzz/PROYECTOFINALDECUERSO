@@ -1,0 +1,13 @@
+:80 {
+  root * /var/www/laravel/public
+  encode gzip zstd
+
+  php_fastcgi php:9000
+  file_server
+
+  # Opcional: seguridad básica
+  # header {
+  #   X-Content-Type-Options nosniff
+  #   X-Frame-Options DENY
+  # }
+}

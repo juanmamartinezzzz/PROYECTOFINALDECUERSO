@@ -1,0 +1,54 @@
+services:
+  # Servidor Web (Caddy) - Gestiona las peticiones de entrada
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./backend:/var/www
+    depends_on:
+      - php
+
+  # Backend - Laravel (PHP 8.3)
+  php:
+    build: ./php
+    working_dir: /var/www/laravel
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - db
+
+  # Frontend - React (Vite)
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true 
+    command: sh -c "npm install && npm run dev -- --host"
+
+  # Base de Datos - MySQL
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dwes
+      MYSQL_DATABASE: viavia_db
+      MYSQL_USER: dwes
+      MYSQL_PASSWORD: dwes
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # Herramienta para dependencias PHP
+  composer:
+    image: composer:2
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    entrypoint: ["composer"]
+
+volumes:
+  db_data:

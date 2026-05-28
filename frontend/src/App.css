@@ -1,0 +1,211 @@
+/* --- 1. CABECERA Y NAVEGACIÓN --- */
+.navbar, .main-nav {
+    background-color: var(--bg-nav);
+    padding: 1rem 5%; /* Padding porcentual para adaptarse a pantallas */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.nav-links, .nav-left, .nav-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+/* 🚨 CORRECCIÓN APLICADA: Enlaces limpios y blancos */
+.nav-links a, .nav-left a, .nav-right a {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: var(--radius-btn);
+    transition: background-color 0.2s ease;
+}
+
+.nav-links a:hover, .nav-links a.active, 
+.nav-left a:hover, .nav-left a.active,
+.nav-right a:hover, .nav-right a.active {
+    background-color: rgba(255, 255, 255, 0.15); /* Hover sutil transparente */
+}
+
+.user-section {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.nav-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid white;
+    object-fit: cover;
+}
+
+.profile-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: white;
+    font-weight: 600;
+}
+
+.logout-btn {
+    background-color: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 8px 20px;
+    border-radius: var(--radius-btn);
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.logout-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+}
+
+/* --- 2. TARJETAS DE VIAJE Y ACCIONES --- */
+.viajes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    padding: 20px 0;
+}
+
+.viaje-card, .card-accion {
+    background: var(--card-bg);
+    padding: 24px;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    color: var(--text-main);
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.viaje-card:hover, .card-accion:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+
+.acciones-rapidas {
+    display: flex;
+    justify-content: space-around;
+    gap: 24px;
+    margin-top: 40px;
+}
+
+.card-accion {
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- 3. BOTONES GLOBALES --- */
+.btn-crear {
+    background: var(--primary);
+    color: white;
+    padding: 12px 28px;
+    text-decoration: none;
+    border-radius: var(--radius-btn);
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-block;
+}
+
+.btn-crear:hover {
+    background: var(--primary-hover);
+}
+
+/* --- 4. CHAT --- */
+.chat-interface {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 80px);
+    background: var(--bg-app);
+}
+
+.sidebar-chat {
+    background: white;
+    border-right: 1px solid #e1e5ee;
+    padding: 1.5rem;
+}
+
+.contacto-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-radius: var(--radius-card);
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+
+.contacto-item:hover {
+    background: #f8f9fa;
+}
+
+.contacto-item.active { 
+    background: #e3f2fd; 
+    color: var(--primary);
+    font-weight: bold; 
+}
+
+.mensajes-box {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.msg { 
+    max-width: 70%; 
+    padding: 12px 16px; 
+    border-radius: 16px; 
+    font-size: 0.95rem; 
+}
+
+.msg.sent { 
+    align-self: flex-end; 
+    background: var(--primary); 
+    color: white; 
+    border-bottom-right-radius: 4px; /* Efecto bocadillo de chat */
+}
+
+.msg.received { 
+    align-self: flex-start; 
+    background: #e9e9eb; 
+    color: var(--text-main);
+    border-bottom-left-radius: 4px;
+}
+.chat-link-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* El diseño del circulito rojo */
+.notification-dot {
+    position: absolute;
+    top: 5px;   /* Ajusta la altura dentro del botón */
+    right: 5px; /* Ajusta qué tan a la derecha está */
+    width: 10px;
+    height: 10px;
+    background-color: #ff3b30; /* Rojo vibrante estilo iOS */
+    border-radius: 50%;
+    
+    /* Borde del color de tu barra de navegación para que se recorte visualmente */
+    border: 2px solid var(--bg-nav); 
+    
+    /* Evita que un clic accidental sobre el punto bloquee el clic en el enlace */
+    pointer-events: none; 
+}
