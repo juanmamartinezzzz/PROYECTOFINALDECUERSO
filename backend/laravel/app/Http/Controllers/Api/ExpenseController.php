@@ -64,7 +64,7 @@ class ExpenseController extends Controller
             'expense_date' => now(),
         ]);
 
-        // ✅ Guardamos los participantes en la nueva tabla
+        // Guardamos los participantes en la nueva tabla
         foreach ($validated['participantes'] as $participanteId) {
             DB::table('expense_participants')->insert([
                 'expense_id' => $expense->id,

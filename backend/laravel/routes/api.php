@@ -59,7 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/peticiones/enviar/{id}', [FriendshipController::class, 'sendRequest']);
     Route::post('/peticiones/aceptar/{id}', [FriendshipController::class, 'acceptRequest']);
 
-    // 7. Chat Directo / Sincrónico entre Amigos
+    // 7. Chat Directo  entre Amigos
     Route::get('/chat/mensajes/{amigoId}', [ChatController::class, 'getMensajes']);
     Route::post('/chat/enviar', [ChatController::class, 'enviar']);
 });

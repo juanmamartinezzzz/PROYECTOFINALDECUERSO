@@ -25,7 +25,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 🚨 CORRECCIÓN CLAVE: Eliminado el límite de 1126px para que sea full-width */
+
 #root {
   width: 100%;
   min-height: 100vh;

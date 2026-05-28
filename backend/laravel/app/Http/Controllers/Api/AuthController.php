@@ -16,7 +16,7 @@ class AuthController extends Controller
 {
     public function register(Request $request) {
         $fields = $request->validate([
-            'name' => 'required|string|max:20|unique:users,name', // ✅ Quitada la coma doble
+            'name' => 'required|string|max:20|unique:users,name', 
             'email' => 'required|string|unique:users,email',
             'password' => ['required', 'string', Password::min(8)->letters()->mixedCase()->numbers()]
         ]);

@@ -55,10 +55,10 @@ class ActivityController extends Controller
             // Inserción clavada con las columnas reales de tu migración
             $id = DB::table('activities')->insertGetId([
                 'trip_id' => $tripId,
-                'activity' => $request->title,        // 🎯 Tu columna real
-                'date' => $fecha,                     // 🎯 Tu columna real
-                'time' => $hora,                      // 🎯 Tu columna real
-                'notes' => $request->description ?? null, // 🎯 Tu columna real
+                'activity' => $request->title,        
+                'date' => $fecha,                     
+                'time' => $hora,                     
+                'notes' => $request->description ?? null, 
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

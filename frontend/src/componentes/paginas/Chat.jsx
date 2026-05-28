@@ -46,7 +46,7 @@ const Chat = () => {
                 if (res.data.length !== mensajes.length) {
                     setMensajes(res.data || []);
                     await api.post(`/chat/marcar-leidos/${amigoSeleccionado.id}`);
-                    // ✅ Recargamos contactos para actualizar contadores
+                    // Recargamos contactos para actualizar contadores
                     await obtenerContactos();
                 }
             } catch (error) {
@@ -91,7 +91,7 @@ const Chat = () => {
             
             await api.post(`/chat/marcar-leidos/${amigo.id}`);
             
-            // ✅ Recargamos la lista para actualizar unread_count y reordenar
+            // Recargamos la lista para actualizar unread_count y reordenar
             await obtenerContactos();
             
             if (setTieneNotificaciones) setTieneNotificaciones(false);
@@ -127,7 +127,7 @@ const Chat = () => {
         }
     };
 
-    // ✅ Ordenar amigos: Mayor número de no leídos primero
+    //Ordenar amigos: Mayor número de no leídos primero
     const amigosOrdenados = [...amigos].sort((a, b) => {
         return (b.unread_count || 0) - (a.unread_count || 0);
     });

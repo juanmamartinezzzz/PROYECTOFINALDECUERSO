@@ -25,7 +25,7 @@ const Perfil = () => {
     }, []);
 
     const cargarPerfil = async () => {
-        // AHORA SÍ: Buscamos la llave con el nombre correcto de tu app
+        // Buscamos la llave con el nombre correcto de tu app
         const token = localStorage.getItem('ACCESS_TOKEN');
         
         if (!token || token === 'null' || token === 'undefined' || token === '') {
@@ -90,7 +90,7 @@ const Perfil = () => {
         e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
 
-        // AHORA SÍ: Comprobamos el ACCESS_TOKEN antes de guardar
+        // Comprobamos el ACCESS_TOKEN antes de guardar
         const token = localStorage.getItem('ACCESS_TOKEN');
         if (!token || token === 'null' || token === 'undefined' || token === '') {
             navigate('/login');

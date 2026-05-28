@@ -7,7 +7,7 @@ use App\Models\Trip;
 use App\Http\Resources\TripResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str; 
-use Illuminate\Support\Facades\DB; // <-- ¡CRÍTICO! Falta esta importación para que no dé Error 500
+use Illuminate\Support\Facades\DB; 
 
 class TripController extends Controller
 {

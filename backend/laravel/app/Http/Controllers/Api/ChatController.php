@@ -85,7 +85,7 @@ class ChatController extends Controller
         }
     }
 
-    // --- NUEVAS FUNCIONES PARA NOTIFICACIONES ---
+    
 
     public function checkNotificaciones()
     {

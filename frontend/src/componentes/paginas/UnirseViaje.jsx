@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Importamos useNavigate
+import { useNavigate } from "react-router-dom";
 import api from "../../api/axios"; 
 
 const UnirseViaje = ({ onJoined }) => {
@@ -13,7 +13,7 @@ const UnirseViaje = ({ onJoined }) => {
     const handleJoin = async () => {
         setMensajeGeneral({ tipo: '', texto: '' });
 
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN' antes de intentar unirse
+        // Comprobamos 'ACCESS_TOKEN' antes de intentar unirse
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             navigate('/login');
             return;
@@ -56,7 +56,7 @@ const UnirseViaje = ({ onJoined }) => {
             <h4 style={styles.title}>¿Te han invitado? 🎫</h4>
             <p style={styles.subtitle}>Introduce el código del viaje para unirte al grupo.</p>
             
-            {/* BANNER DE MENSAJES INTEGRADO */}
+            {/*  MENSAJES INTEGRADO */}
             {mensajeGeneral.texto && (
                 <div style={{
                     padding: '10px',

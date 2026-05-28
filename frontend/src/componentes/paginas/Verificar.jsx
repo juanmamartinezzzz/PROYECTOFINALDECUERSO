@@ -30,7 +30,7 @@ const Verificar = () => {
                 code: codigo
             });
 
-            // CORREGIDO: Usamos la llave 'ACCESS_TOKEN' que usa tu Axios
+            // Usamos la llave 'ACCESS_TOKEN' que usa tu Axios
             localStorage.setItem('ACCESS_TOKEN', res.data.token);
             
             setMensajeGeneral({ tipo: 'exito', texto: "¡Correo verificado con éxito! Entrando..." });

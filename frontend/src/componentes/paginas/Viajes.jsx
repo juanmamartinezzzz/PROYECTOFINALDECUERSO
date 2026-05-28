@@ -12,7 +12,7 @@ const Viajes = () => {
     const obtenerViajes = async () => {
         setMensajeGeneral({ tipo: '', texto: '' });
         
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN'
+        // Comprobamos 'ACCESS_TOKEN'
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             setCargando(false);
             return;

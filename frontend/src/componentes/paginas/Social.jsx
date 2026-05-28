@@ -19,7 +19,7 @@ const Social = () => {
     }, []);
 
     const cargarDatos = async () => {
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN'
+        // Comprobamos 'ACCESS_TOKEN'
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             return;
         }
@@ -39,7 +39,7 @@ const Social = () => {
         e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
         
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN' antes de buscar
+        // Comprobamos 'ACCESS_TOKEN' antes de buscar
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             navigate('/login');
             return;
@@ -65,7 +65,7 @@ const Social = () => {
     const enviarPeticion = async (id) => {
         setMensajeGeneral({ tipo: '', texto: '' });
         
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN'
+        //  Comprobamos 'ACCESS_TOKEN'
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             navigate('/login');
             return;
@@ -83,7 +83,7 @@ const Social = () => {
     const aceptarPeticion = async (id) => {
         setMensajeGeneral({ tipo: '', texto: '' });
         
-        // LÓGICA DE PROTECCIÓN: Comprobamos 'ACCESS_TOKEN'
+        // Comprobamos 'ACCESS_TOKEN'
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             navigate('/login');
             return;

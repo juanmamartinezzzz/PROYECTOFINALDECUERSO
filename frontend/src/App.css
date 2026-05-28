@@ -14,7 +14,7 @@
     align-items: center;
 }
 
-/* 🚨 CORRECCIÓN APLICADA: Enlaces limpios y blancos */
+/* Enlaces limpios y blancos */
 .nav-links a, .nav-left a, .nav-right a {
     color: white;
     text-decoration: none;
@@ -193,19 +193,19 @@
     align-items: center;
 }
 
-/* El diseño del circulito rojo */
+
 .notification-dot {
     position: absolute;
-    top: 5px;   /* Ajusta la altura dentro del botón */
-    right: 5px; /* Ajusta qué tan a la derecha está */
+    top: 5px;   
+    right: 5px; 
     width: 10px;
     height: 10px;
-    background-color: #ff3b30; /* Rojo vibrante estilo iOS */
+    background-color: #ff3b30; 
     border-radius: 50%;
     
-    /* Borde del color de tu barra de navegación para que se recorte visualmente */
+   
     border: 2px solid var(--bg-nav); 
     
-    /* Evita que un clic accidental sobre el punto bloquee el clic en el enlace */
+    
     pointer-events: none; 
 }

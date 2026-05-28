@@ -4,11 +4,11 @@ import Rutas from "./Rutas.jsx";
 const Contenido = () => {
     return (
         <main style={{ 
-            flexGrow: 1, // Esto empuja mágicamente el pie de página al fondo
+            flexGrow: 1, 
             width: '100%', 
-            maxWidth: '1200px', // Ancho máximo para que no se estire demasiado en PC
-            margin: '0 auto', // Centrado horizontal
-            padding: '40px 5%', // Espacio generoso para respirar
+            maxWidth: '1200px', 
+            margin: '0 auto', 
+            padding: '40px 5%', 
             boxSizing: 'border-box'
         }}>
             <Rutas />

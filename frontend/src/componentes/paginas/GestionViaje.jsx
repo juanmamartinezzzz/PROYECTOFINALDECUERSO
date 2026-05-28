@@ -89,7 +89,7 @@ const GestionViaje = () => {
     const listaParticipantes = viaje?.participantes || [{ id: 1, name: 'juanma' }];
 
     const toggleParticipante = (pId) => {
-        // ✅ Corregido: era 'id !== pId' en vez de 'id => id !== pId'
+        
         if (participantesSeleccionados.includes(pId)) {
             setParticipantesSeleccionados(participantesSeleccionados.filter(id => id !== pId));
         } else {
@@ -109,7 +109,7 @@ const GestionViaje = () => {
     const numeroDePersonas = listaParticipantes.length || 1;
     const gastoPorPersona = totalGastado / numeroDePersonas;
 
-    // ✅ calcularSaldos corregido para usar participantes por gasto
+    //  usar participantes por gasto
     const calcularSaldos = () => {
         let saldos = {};
         listaParticipantes.forEach(p => saldos[p.name] = 0);

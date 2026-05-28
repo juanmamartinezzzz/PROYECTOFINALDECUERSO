@@ -44,7 +44,7 @@ const styles = {
     // Grid automático: crea columnas de mínimo 250px. Si no caben, las apila.
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '25px' },
     
-    // Estilos de la tarjeta (funcionando como botón/enlace)
+    // Estilos de la tarjeta 
     card: { 
         backgroundColor: 'var(--card-bg)', 
         padding: '40px 20px', 

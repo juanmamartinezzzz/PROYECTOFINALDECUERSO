@@ -30,7 +30,7 @@ const Rutas = () => {
                     element={!token ? <Verificar /> : <Navigate to="/" />} 
                 />
 
-                {/* --- RUTAS TOTALMENTE PÚBLICAS (Se ven siempre) --- */}
+                {/* --- RUTAS PÚBLICAS  --- */}
                 <Route path="/" element={<Inicio />} /> 
                 <Route path="/viajes" element={<Viajes />} />
                 <Route path="/crear-viaje" element={<CrearViaje />} />

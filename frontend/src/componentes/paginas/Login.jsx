@@ -50,7 +50,7 @@ const Login = () => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
         
-        // Limpiar errores visuales al escribir
+        // Limpiar errores 
         if (errores[name]) setErrores({ ...errores, [name]: '' });
         if (errorGeneral) setErrorGeneral('');
     };
@@ -110,7 +110,7 @@ const Login = () => {
                         <input 
                             type="text" 
                             name="name"
-                            maxLength={20} // Bloqueo visual a 20 caracteres
+                            maxLength={20} // Bloqueo  a 20 caracteres
                             placeholder="Nombre de usuario" 
                             value={formData.name}
                             onChange={handleChange} 

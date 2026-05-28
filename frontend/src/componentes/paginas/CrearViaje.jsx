@@ -23,7 +23,7 @@ const CrearViaje = () => {
     const [cargando, setCargando] = useState(false);
 
     useEffect(() => {
-        // Comprobación a prueba de balas: nos aseguramos de que haya token válido
+        // nos aseguramos de que haya token válido
         const token = localStorage.getItem('ACCESS_TOKEN');
         
         if (token && token !== 'null' && token !== 'undefined' && token !== '') {
@@ -52,7 +52,7 @@ const CrearViaje = () => {
         e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
 
-        // LÓGICA DE PROTECCIÓN: Si no hay token real, lo mandamos al login de inmediato
+        // Si no hay token real, lo mandamos al login de inmediato
         const token = localStorage.getItem('ACCESS_TOKEN');
         if (!token || token === 'null' || token === 'undefined' || token === '') {
             navigate('/login');
@@ -74,7 +74,7 @@ const CrearViaje = () => {
             setCargando(false);
             if (error.response && error.response.status === 422) {
                 const errores = error.response.data.errors;
-                // Juntamos los errores de forma amigable por si hay más de uno
+                // Juntamos los errores por si hay más de uno
                 const mensaje = Object.values(errores).flat().join(" | ");
                 setMensajeGeneral({ tipo: 'error', texto: "Revisa los datos: " + mensaje });
             } else {
