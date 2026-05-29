@@ -54,6 +54,7 @@ const UnirseViaje = ({ onJoined }) => {
     return (
         <div className="join-trip-box" style={styles.container}>
             <h4 style={styles.title}>¿Te han invitado? 🎫</h4>
+            <p style={styles.subtitle}>Únete directamente desde aquí.</p>
             <p style={styles.subtitle}>Introduce el código del viaje para unirte al grupo.</p>
             
             {/*  MENSAJES INTEGRADO */}

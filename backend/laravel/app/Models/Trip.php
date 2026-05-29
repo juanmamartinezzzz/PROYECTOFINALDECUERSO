@@ -14,7 +14,8 @@ class Trip extends Model
         'destination', 
         'start_date', 
         'end_date', 
-        'invite_code'
+        'invite_code',
+        'image'
     ];
 
     /**

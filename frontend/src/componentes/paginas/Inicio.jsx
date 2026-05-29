@@ -6,7 +6,7 @@ const Inicio = () => {
         <div style={styles.container}>
             <header style={styles.header}>
                 <h1 style={styles.title}>Bienvenido a ViaVia</h1>
-                <p style={styles.subtitle}>Tu próxima aventura comienza aquí.</p>
+                <p style={styles.subtitle}>Menos líos organizando, más tiempo viajando.</p>
             </header>
 
             <div style={styles.grid}>
@@ -27,6 +27,19 @@ const Inicio = () => {
                     <h3 style={styles.cardTitle}>Chat</h3>
                     <p style={styles.cardText}>Habla en tiempo real con tu grupo</p>
                 </Link>
+            </div>
+
+            {/* NUEVA IMAGEN PANORÁMICA DE CIERRE */}
+            <div style={styles.imageContainer}>
+                <img 
+                    src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=1200&q=80" 
+                    alt="Paisaje de viaje al atardecer" 
+                    style={styles.bannerImage} 
+                />
+                {/* Opcional: Un pequeño texto superpuesto sobre la imagen */}
+                <div style={styles.imageOverlay}>
+                    <h2 style={styles.overlayText}>El mundo te está esperando</h2>
+                </div>
             </div>
         </div>
     );
@@ -61,7 +74,45 @@ const styles = {
     
     icon: { fontSize: '60px', display: 'block', marginBottom: '20px' },
     cardTitle: { marginBottom: '10px', marginTop: 0, fontSize: '22px', color: 'var(--text-main)', fontWeight: '800' },
-    cardText: { color: 'var(--text-muted)', fontSize: '15px', margin: 0, lineHeight: '1.4' }
+    cardText: { color: 'var(--text-muted)', fontSize: '15px', margin: 0, lineHeight: '1.4' },
+
+    // --- NUEVOS ESTILOS PARA EL BANNER ---
+    imageContainer: {
+        marginTop: '50px',
+        width: '100%',
+        borderRadius: '20px', 
+        overflow: 'hidden', // Evita que la imagen se salga de los bordes redondeados
+        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+        position: 'relative', // Para poder poner el texto encima
+        lineHeight: 0 // Evita un pequeño margen fantasma debajo de las imágenes
+    },
+    bannerImage: {
+        width: '100%',
+        height: 'clamp(200px, 25vw, 350px)', // Altura adaptable (min 200px, max 350px)
+        objectFit: 'cover', // Recorta la imagen sin deformarla para que llene el espacio
+        display: 'block',
+        filter: 'brightness(0.8)' // Oscurece un pelín la imagen para que destaque el texto
+    },
+    imageOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none' // Evita que interfiera si alguien intenta hacer clic o arrastrar
+    },
+    overlayText: {
+        color: 'white',
+        fontSize: 'clamp(24px, 4vw, 36px)',
+        fontWeight: '900',
+        textShadow: '0 2px 10px rgba(0,0,0,0.5)', // Sombra para que se lea perfectamente
+        margin: 0,
+        textAlign: 'center',
+        padding: '0 20px'
+    }
 };
 
 export default Inicio;

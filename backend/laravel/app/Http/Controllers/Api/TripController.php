@@ -35,21 +35,21 @@ class TripController extends Controller
             'end_date'    => 'required|date|after_or_equal:start_date',
             'invitados'   => 'nullable|array',
             'invitados.*' => 'exists:users,id',
+            'image'       => 'nullable|file|image|mimes:jpeg,png,jpg,gif|max:5120', // ✅
         ]);
 
-        // Generamos el código de invitación único
         $validated['invite_code'] = strtoupper(Str::random(6));
-        
-        // ID del creador actual (Fallback al ID 1 por si pruebas de forma local sin sanctum)
         $currentUserId = auth()->id() ?? 1;
-        $validated['creator_id'] = $currentUserId; 
+        $validated['creator_id'] = $currentUserId;
+
+        // ✅ Guardar imagen si viene
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')->store('trips', 'public');
+        }
 
         $trip = Trip::create($validated);
-
-        // Vinculamos al organizador en la tabla pivote trip_members
         $trip->members()->attach($currentUserId, ['role' => 'organizador']);
 
-        // Vinculamos a los amigos invitados
         if (!empty($request->invitados)) {
             $trip->members()->attach($request->invitados, ['role' => 'miembro']);
         }
@@ -80,11 +80,12 @@ class TripController extends Controller
 
         // 3. Estructuramos la respuesta exactamente como la espera tu React
         return response()->json([
-            'id'          => $viaje->id,
-            'title'       => $viaje->title,
-            'destination' => $viaje->destination,
-            'start_date'  => $viaje->start_date ?? null,
-            'end_date'    => $viaje->end_date ?? null,
+            'id'            => $viaje->id,
+            'title'         => $viaje->title,
+            'destination'   => $viaje->destination,
+            'start_date'    => $viaje->start_date ?? null,
+            'end_date'      => $viaje->end_date ?? null,
+            'image_url'     => $viaje->image ? asset('storage/' . $viaje->image) : null, // ✅
             'participantes' => $participantes
         ], 200);
 
@@ -116,10 +117,21 @@ class TripController extends Controller
     /**
      * Eliminar viaje.
      */
-    public function destroy(Trip $trip)
+    public function destroy($id)
     {
-        $trip->delete();
-        return response()->json(['message' => 'Viaje eliminado correctamente']);
+        $currentUserId = auth()->id();
+
+        $miRol = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $currentUserId)
+            ->value('role');
+
+        if ($miRol !== 'organizador') {
+            return response()->json(['message' => 'Solo el organizador puede borrar el viaje.'], 403);
+        }
+
+        Trip::findOrFail($id)->delete();
+        return response()->json(['message' => 'Viaje eliminado correctamente.']);
     }
 
     /**
@@ -163,5 +175,133 @@ class TripController extends Controller
         }
 
         return response()->json($trip->members);
+    }
+        /**
+     * Obtener el rol del usuario autenticado en el viaje
+     */
+    public function miRol($id)
+    {
+        $userId = auth()->id();
+        $miembro = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$miembro) {
+            return response()->json(['rol' => null], 404);
+        }
+
+        return response()->json(['rol' => $miembro->role]);
+    }
+
+    /**
+     * Expulsar a un miembro del viaje (solo organizador)
+     */
+    public function expulsarMiembro($id, $userId)
+    {
+        $currentUserId = auth()->id();
+
+        $miOrol = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $currentUserId)
+            ->value('role');
+
+        if ($miOrol !== 'organizador') {
+            return response()->json(['message' => 'No tienes permisos para expulsar miembros.'], 403);
+        }
+
+        if ($currentUserId == $userId) {
+            return response()->json(['message' => 'No puedes expulsarte a ti mismo.'], 400);
+        }
+
+        DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+
+        return response()->json(['message' => 'Miembro expulsado correctamente.']);
+    }
+
+    /**
+     * Abandonar un viaje (viajero)
+     */
+    public function abandonarViaje($id)
+    {
+        $userId = auth()->id();
+
+        $miRol = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $userId)
+            ->value('role');
+
+        if ($miRol === 'organizador') {
+            return response()->json(['message' => 'Eres el organizador. Transfiere el rol antes de abandonar.'], 400);
+        }
+
+        DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+
+        return response()->json(['message' => 'Has abandonado el viaje correctamente.']);
+    }
+
+    /**
+     * Transferir rol de organizador a otro miembro
+     */
+    public function transferirRol($id, $userId)
+    {
+        $currentUserId = auth()->id();
+
+        $miRol = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $currentUserId)
+            ->value('role');
+
+        if ($miRol !== 'organizador') {
+            return response()->json(['message' => 'No tienes permisos para transferir el rol.'], 403);
+        }
+
+        // Nuevo organizador
+        DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $userId)
+            ->update(['role' => 'organizador']);
+
+        // El actual pasa a ser viajero
+        DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $currentUserId)
+            ->update(['role' => 'viajero']);
+
+        return response()->json(['message' => 'Rol transferido correctamente.']);
+    }
+
+    /**
+     * Editar datos del viaje (solo organizador)
+     */
+    public function editarViaje(Request $request, $id)
+    {
+        $currentUserId = auth()->id();
+
+        $miRol = DB::table('trip_members')
+            ->where('trip_id', $id)
+            ->where('user_id', $currentUserId)
+            ->value('role');
+
+        if ($miRol !== 'organizador') {
+            return response()->json(['message' => 'No tienes permisos para editar el viaje.'], 403);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'sometimes|string|max:255',
+            'destination' => 'sometimes|string',
+            'start_date'  => 'sometimes|date',
+            'end_date'    => 'sometimes|date|after_or_equal:start_date',
+        ]);
+
+        DB::table('trips')->where('id', $id)->update($validated);
+
+        return response()->json(['message' => 'Viaje actualizado correctamente.']);
     }
 }

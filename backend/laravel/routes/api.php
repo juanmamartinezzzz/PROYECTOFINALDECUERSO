@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\TripMessageController;  
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\HotelController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,7 +30,6 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::get('/user/profile', [AuthController::class, 'getProfile']); 
-    // Usamos POST para asegurar que la subida de la imagen (multipart/form-data) funcione sin problemas
     Route::post('/user/update', [AuthController::class, 'updateProfile']);
 
     // 2. Viajes (Trips)
@@ -52,14 +51,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/trips/{trip}/messages', [TripMessageController::class, 'storeMessage']);
     Route::get('/chat/notificaciones', [ChatController::class, 'checkNotificaciones']);
     Route::post('/chat/marcar-leidos/{amigoId}', [ChatController::class, 'marcarLeidos']);
+    
     // 6. Sistema Social (Amigos y Peticiones)
     Route::get('/usuarios/buscar', [FriendshipController::class, 'search']);
     Route::get('/amigos/listado', [FriendshipController::class, 'index']);
     Route::get('/peticiones-pendientes', [FriendshipController::class, 'pendingRequests']);
     Route::post('/peticiones/enviar/{id}', [FriendshipController::class, 'sendRequest']);
     Route::post('/peticiones/aceptar/{id}', [FriendshipController::class, 'acceptRequest']);
+    Route::delete('/amigos/eliminar/{id}', [FriendshipController::class, 'removeFriend']); // ✅ NUEVA RUTA
 
-    // 7. Chat Directo  entre Amigos
+    // 7. Chat Directo entre Amigos
     Route::get('/chat/mensajes/{amigoId}', [ChatController::class, 'getMensajes']);
     Route::post('/chat/enviar', [ChatController::class, 'enviar']);
-});
+
+    // 8. Gestión de Viajes Avanzada
+    Route::get('/trips/{id}/mi-rol', [TripController::class, 'miRol']);
+    Route::post('/trips/{id}/expulsar/{userId}', [TripController::class, 'expulsarMiembro']);
+    Route::post('/trips/{id}/abandonar', [TripController::class, 'abandonarViaje']);
+    Route::post('/trips/{id}/transferir-rol/{userId}', [TripController::class, 'transferirRol']);
+    Route::put('/trips/{id}/editar', [TripController::class, 'editarViaje']);
+
+    Route::get('/trips/{trip}/hotels', [HotelController::class, 'getHotels']);
+    Route::post('/trips/{trip}/hotels', [HotelController::class, 'storeHotel']);
+    });

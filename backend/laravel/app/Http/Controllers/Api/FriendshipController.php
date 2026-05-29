@@ -122,7 +122,6 @@ class FriendshipController extends Controller
                 ->distinct()
                 ->get();
 
-            // Lógica para añadir contador de mensajes no leídos
             try {
                 $tablaChat = $this->getNombreTablaChat();
                 $columnas = Schema::getColumnListing($tablaChat);
@@ -137,7 +136,6 @@ class FriendshipController extends Controller
                         ->count();
                 }
             } catch (\Exception $ex) {
-                // Si falla la tabla de chat, ponemos a 0
                 foreach ($amigos as $amigo) {
                     $amigo->unread_count = 0;
                 }
@@ -146,6 +144,32 @@ class FriendshipController extends Controller
             return response()->json($amigos, 200);
         } catch (\Exception $e) {
             return response()->json([], 200);
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN PARA ELIMINAR AMISTAD
+    public function removeFriend($id)
+    {
+        try {
+            $userId = Auth::id();
+
+            // Buscamos la relación y la borramos sea cual sea la dirección
+            $eliminado = DB::table('friendships')
+                ->where(function ($query) use ($userId, $id) {
+                    $query->where('user_id', $userId)->where('amigo_id', $id);
+                })
+                ->orWhere(function ($query) use ($userId, $id) {
+                    $query->where('user_id', $id)->where('amigo_id', $userId);
+                })
+                ->delete();
+
+            if ($eliminado) {
+                return response()->json(['message' => 'Amigo eliminado correctamente.']);
+            }
+
+            return response()->json(['message' => 'No se encontró la amistad.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

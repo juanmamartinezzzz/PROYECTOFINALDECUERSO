@@ -14,20 +14,18 @@ const Social = () => {
     // Estado para los mensajes visuales (sin alerts)
     const [mensajeGeneral, setMensajeGeneral] = useState({ tipo: '', texto: '' });
 
+    // ✅ NUEVO: Estado para el modal de confirmación
+    const [dialogoConfirmacion, setDialogoConfirmacion] = useState({ visible: false, mensaje: '', accionConfirmada: null });
+
     useEffect(() => {
         cargarDatos();
     }, []);
 
     const cargarDatos = async () => {
-        // Comprobamos 'ACCESS_TOKEN'
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            return;
-        }
-
+        if (!localStorage.getItem('ACCESS_TOKEN')) return;
         try {
             const resAmigos = await api.get('/amigos/listado');
             setAmigos(resAmigos.data || []);
-
             const resPeticiones = await api.get('/peticiones-pendientes');
             setPeticiones(resPeticiones.data || []);
         } catch (error) {
@@ -39,7 +37,6 @@ const Social = () => {
         e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
         
-        // Comprobamos 'ACCESS_TOKEN' antes de buscar
         if (!localStorage.getItem('ACCESS_TOKEN')) {
             navigate('/login');
             return;
@@ -55,7 +52,6 @@ const Social = () => {
                 setMensajeGeneral({ tipo: 'error', texto: 'No se han encontrado usuarios con ese nombre o correo.' });
             }
         } catch (error) {
-            console.error("Error en la búsqueda", error);
             setMensajeGeneral({ tipo: 'error', texto: 'Hubo un problema con la búsqueda.' });
         } finally {
             setLoading(false);
@@ -64,12 +60,7 @@ const Social = () => {
 
     const enviarPeticion = async (id) => {
         setMensajeGeneral({ tipo: '', texto: '' });
-        
-        //  Comprobamos 'ACCESS_TOKEN'
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            navigate('/login');
-            return;
-        }
+        if (!localStorage.getItem('ACCESS_TOKEN')) { navigate('/login'); return; }
 
         try {
             const res = await api.post(`/peticiones/enviar/${id}`);
@@ -82,31 +73,38 @@ const Social = () => {
 
     const aceptarPeticion = async (id) => {
         setMensajeGeneral({ tipo: '', texto: '' });
-        
-        // Comprobamos 'ACCESS_TOKEN'
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            navigate('/login');
-            return;
-        }
+        if (!localStorage.getItem('ACCESS_TOKEN')) { navigate('/login'); return; }
 
         try {
             await api.post(`/peticiones/aceptar/${id}`);
             setMensajeGeneral({ tipo: 'exito', texto: "¡Petición aceptada! Ya tenéis conexión." });
-            
             cargarDatos();
-            
-            if (peticiones.length <= 1) {
-                setMostrarBuzon(false);
-            }
+            if (peticiones.length <= 1) setMostrarBuzon(false);
         } catch (error) {
             setMensajeGeneral({ tipo: 'error', texto: "Error al intentar aceptar la petición." });
         }
     };
 
+    // ✅ NUEVO: Función con modal integrado para eliminar amigos
+    const eliminarAmigo = (id, nombre) => {
+        setDialogoConfirmacion({
+            visible: true,
+            mensaje: `¿Estás seguro de que quieres eliminar a ${nombre} de tu lista de amigos?`,
+            accionConfirmada: async () => {
+                try {
+                    await api.delete(`/amigos/eliminar/${id}`);
+                    setMensajeGeneral({ tipo: 'exito', texto: `${nombre} ha sido eliminado de tus amigos.` });
+                    cargarDatos(); // Recargar la lista
+                } catch (error) {
+                    setMensajeGeneral({ tipo: 'error', texto: 'Error al eliminar al amigo.' });
+                }
+            }
+        });
+    };
+
     return (
         <div style={styles.container}>
             
-            {/* CABECERA Y BUZÓN */}
             <div style={styles.header}>
                 <div>
                     <h1 style={styles.title}>👥 Mis Amigos</h1>
@@ -121,25 +119,18 @@ const Social = () => {
                 </button>
             </div>
 
-            {/* BANNER DE MENSAJES INTEGRADO */}
             {mensajeGeneral.texto && (
                 <div style={{
-                    padding: '14px',
-                    marginBottom: '20px',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    fontSize: '15px',
+                    padding: '14px', marginBottom: '20px', borderRadius: '8px', textAlign: 'center',
+                    fontWeight: 'bold', fontSize: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                     backgroundColor: mensajeGeneral.tipo === 'exito' ? '#d1fae5' : '#fee2e2',
                     color: mensajeGeneral.tipo === 'exito' ? '#065f46' : '#dc2626',
-                    border: `1px solid ${mensajeGeneral.tipo === 'exito' ? '#34d399' : '#f87171'}`,
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                    border: `1px solid ${mensajeGeneral.tipo === 'exito' ? '#34d399' : '#f87171'}`
                 }}>
                     {mensajeGeneral.texto}
                 </div>
             )}
 
-            {/* PANEL DEL BUZÓN */}
             {mostrarBuzon && (
                 <div style={styles.buzonPanel}>
                     <h3 style={styles.sectionTitle}>Peticiones Pendientes</h3>
@@ -164,7 +155,6 @@ const Social = () => {
                 </div>
             )}
 
-            {/* BUSCADOR DE USUARIOS */}
             <div style={styles.card}>
                 <h3 style={styles.sectionTitle}>🔍 Añadir nuevos amigos</h3>
                 <form onSubmit={buscarUsuarios} style={styles.searchForm}>
@@ -203,7 +193,6 @@ const Social = () => {
                 )}
             </div>
 
-            {/* LISTADO DE AMIGOS ACTUALES */}
             <div style={{marginTop: '40px'}}>
                 <h3 style={styles.sectionTitle}>Tus Amigos ({amigos.length})</h3>
                 {amigos.length === 0 ? (
@@ -215,17 +204,57 @@ const Social = () => {
                                 <div style={styles.avatarMedium}>{amigo.name.substring(0,2).toUpperCase()}</div>
                                 <h4 style={styles.userNameCenter}>{amigo.name}</h4>
                                 <p style={styles.userEmailCenter}>{amigo.email}</p>
-                                <button 
-                                    style={styles.btnChat} 
-                                    onClick={() => navigate('/chat', { state: { seleccionarAmigo: amigo } })}
-                                >
-                                    💬 Mensaje
-                                </button>
+                                
+                                {/* ✅ Botones divididos: Chat principal y Eliminar secundario */}
+                                <div style={{ display: 'flex', width: '100%', gap: '10px' }}>
+                                    <button 
+                                        style={styles.btnChat} 
+                                        onClick={() => navigate('/chat', { state: { seleccionarAmigo: amigo } })}
+                                    >
+                                        💬 Mensaje
+                                    </button>
+                                    <button 
+                                        style={styles.btnDelete} 
+                                        onClick={() => eliminarAmigo(amigo.id, amigo.name)}
+                                        title="Eliminar amigo"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* ✅ MODAL DE CONFIRMACIÓN ELEGANTE */}
+            {dialogoConfirmacion.visible && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalBox}>
+                        <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '20px' }}>⚠️ Eliminar Amigo</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginBottom: '25px' }}>
+                            {dialogoConfirmacion.mensaje}
+                        </p>
+                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                            <button 
+                                onClick={() => setDialogoConfirmacion({ visible: false, mensaje: '', accionConfirmada: null })} 
+                                style={styles.btnCancelarModal}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    dialogoConfirmacion.accionConfirmada();
+                                    setDialogoConfirmacion({ visible: false, mensaje: '', accionConfirmada: null });
+                                }} 
+                                style={styles.btnConfirmarModal}
+                            >
+                                Sí, eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
@@ -238,7 +267,6 @@ const styles = {
     subtitle: { fontSize: '16px', color: 'var(--text-muted)', margin: 0 },
     buzonBtn: { position: 'relative', backgroundColor: 'var(--card-bg)', border: '1px solid #e1e5ee', padding: '12px 24px', borderRadius: 'var(--radius-btn)', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: 'var(--shadow)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', transition: '0.2s', flex: '0 0 auto' },
     badge: { position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#e74c3c', color: 'white', borderRadius: '50%', padding: '4px 8px', fontSize: '12px', fontWeight: 'bold', border: '2px solid white' },
-    
     buzonPanel: { backgroundColor: 'rgba(0, 98, 227, 0.05)', border: '1px solid rgba(0, 98, 227, 0.2)', borderRadius: 'var(--radius-card)', padding: 'clamp(15px, 4vw, 24px)', marginBottom: '30px', boxShadow: 'var(--shadow)', boxSizing: 'border-box' },
     card: { backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-card)', padding: 'clamp(15px, 4vw, 30px)', boxShadow: 'var(--shadow)', border: '1px solid #e1e5ee', boxSizing: 'border-box' },
     sectionTitle: { fontSize: '20px', fontWeight: '800', color: 'var(--text-main)', marginBottom: '20px', marginTop: 0 },
@@ -247,23 +275,25 @@ const styles = {
     searchForm: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
     input: { flex: '1 1 200px', padding: '14px 20px', borderRadius: 'var(--radius-btn)', border: '1px solid #e1e5ee', fontSize: '15px', outline: 'none', backgroundColor: 'var(--bg-app)', color: 'var(--text-main)', boxSizing: 'border-box' },
     btnPrimary: { flex: '0 0 auto', backgroundColor: 'var(--primary)', color: 'white', border: 'none', padding: '14px 30px', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s' },
-    
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' },
-    
     userCard: { display: 'flex', alignItems: 'center', gap: '15px', padding: '16px', backgroundColor: 'var(--bg-app)', borderRadius: '12px', border: '1px solid #e1e5ee', transition: '0.2s', flexWrap: 'wrap' },
     friendCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-card)', border: '1px solid #e1e5ee', boxShadow: 'var(--shadow)', transition: 'transform 0.2s, box-shadow 0.2s' },
-    
     avatarMini: { width: '42px', height: '42px', borderRadius: '50%', background: 'var(--bg-nav)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 },
     avatarMedium: { width: '70px', height: '70px', borderRadius: '50%', background: 'var(--bg-nav)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px', marginBottom: '15px', boxShadow: '0 4px 10px rgba(5,32,60,0.2)' },
-    
     userName: { margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--text-main)', wordBreak: 'break-word' },
     userEmail: { margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)', wordBreak: 'break-all' }, 
     userNameCenter: { margin: '0 0 5px 0', fontSize: '18px', fontWeight: '800', color: 'var(--text-main)', wordBreak: 'break-word', textAlign: 'center' },
     userEmailCenter: { margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text-muted)', wordBreak: 'break-all', textAlign: 'center' },
-    
     btnAdd: { flex: '0 0 auto', backgroundColor: 'var(--card-bg)', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '8px 16px', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '13px', transition: '0.2s' },
     btnAccept: { flex: '0 0 auto', backgroundColor: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '13px', transition: '0.2s' },
-    btnChat: { backgroundColor: 'rgba(0, 98, 227, 0.1)', color: 'var(--primary)', border: 'none', padding: '12px 0', width: '100%', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s' }
+    btnChat: { flex: 1, backgroundColor: 'rgba(0, 98, 227, 0.1)', color: 'var(--primary)', border: 'none', padding: '12px 0', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '15px', transition: '0.2s' },
+    btnDelete: { flex: '0 0 auto', backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '0 16px', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '16px', transition: '0.2s' },
+    
+    // ✅ Estilos del Modal
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
+    modalBox: { backgroundColor: 'var(--card-bg)', padding: '30px', borderRadius: '16px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' },
+    btnCancelarModal: { padding: '12px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#e1e5ee', color: 'var(--text-main)', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
+    btnConfirmarModal: { padding: '12px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#dc2626', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }
 };
 
 export default Social;

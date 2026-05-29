@@ -7,22 +7,31 @@ const GestionViaje = () => {
     const navigate = useNavigate();
     const [tab, setTab] = useState('finanzas');
     const [subTabFinanzas, setSubTabFinanzas] = useState('gastos');
+    
+    // ✅ SUB-TABS PARA ITINERARIO (Actividades o Hoteles)
+    const [subTabItinerario, setSubTabItinerario] = useState('actividades');
+
     const [viaje, setViaje] = useState(null);
     const [loading, setLoading] = useState(true);
-
+    const [miRol, setMiRol] = useState(null); 
     const [mensajeGeneral, setMensajeGeneral] = useState({ tipo: '', texto: '' });
+    const [dialogoConfirmacion, setDialogoConfirmacion] = useState({ visible: false, mensaje: '', accionConfirmada: null });
 
+    // Estados de datos
     const [gastos, setGastos] = useState([]);
+    const [planes, setPlanes] = useState([]);
+    const [hoteles, setHoteles] = useState([]); // ✅ Estado para alojamientos
+
+    // Estados de formularios
     const [descripcion, setDescripcion] = useState('');
     const [monto, setMonto] = useState('');
     const [pagadorId, setPagadorId] = useState('');
     const [participantesSeleccionados, setParticipantesSeleccionados] = useState([]);
-
     const [mensajes, setMensajes] = useState([]);
     const [nuevoMensaje, setNuevoMensaje] = useState('');
-
-    const [planes, setPlanes] = useState([]);
     const [dia, setDia] = useState('');
+    const [editandoViaje, setEditandoViaje] = useState(false);
+    const [datosEdicion, setDatosEdicion] = useState({ title: '', destination: '', start_date: '', end_date: '' });
 
     useEffect(() => {
         cargarDatosDeViaje();
@@ -30,66 +39,46 @@ const GestionViaje = () => {
 
     const cargarDatosDeViaje = async () => {
         const token = localStorage.getItem('ACCESS_TOKEN');
-        
-        if (!token || token === 'null' || token === 'undefined' || token === '') {
-            setViaje({ 
-                title: 'Escapada de Ejemplo (Modo Vista)', 
-                destination: 'Destino de prueba', 
-                participantes: [{id: 1, name: 'Viajero Anónimo'}] 
-            });
-            setLoading(false);
-            return;
-        }
+        if (!token) { navigate('/login'); return; }
 
         try {
             setLoading(true);
-            const resV = await api.get(`/trips/${id}`);
+            const [resV, resRol] = await Promise.all([
+                api.get(`/trips/${id}`),
+                api.get(`/trips/${id}/mi-rol`)
+            ]);
+
             const datosViaje = resV.data;
-            
-            if (!datosViaje.participantes || datosViaje.participantes.length === 0) {
-                datosViaje.participantes = [{ id: 1, name: 'juanma' }];
-            }
-            
             setViaje(datosViaje);
-            if (datosViaje.participantes.length > 0) {
+            setMiRol(resRol.data.rol);
+            setDatosEdicion({
+                title: datosViaje.title || '',
+                destination: datosViaje.destination || '',
+                start_date: datosViaje.start_date || '',
+                end_date: datosViaje.end_date || ''
+            });
+
+            if (datosViaje.participantes?.length > 0) {
                 setPagadorId(datosViaje.participantes[0].id);
                 setParticipantesSeleccionados(datosViaje.participantes.map(p => p.id));
             }
 
-            try {
-                const resG = await api.get(`/trips/${id}/expenses`);
-                setGastos(resG.data || []);
-            } catch (errG) {
-                setGastos([]);
-            }
-
-            try { 
-                const resA = await api.get(`/trips/${id}/activities`); 
-                setPlanes(resA.data || []); 
-            } catch (e) {}
-            
-            try { 
-                const resM = await api.get(`/trips/${id}/messages`); 
-                setMensajes(resM.data || []); 
-            } catch (e) {}
+            // Consultas paralelas seguras
+            api.get(`/trips/${id}/expenses`).then(res => setGastos(res.data || [])).catch(() => {});
+            api.get(`/trips/${id}/activities`).then(res => setPlanes(res.data || [])).catch(() => {});
+            api.get(`/trips/${id}/hotels`).then(res => setHoteles(res.data || [])).catch(() => {}); // ✅ Carga de hoteles
+            api.get(`/trips/${id}/messages`).then(res => setMensajes(res.data || [])).catch(() => {});
 
             setLoading(false);
         } catch (err) {
-            if (err.response && err.response.status === 401) {
-                localStorage.removeItem('ACCESS_TOKEN');
-                navigate('/login');
-                return;
-            }
-            console.error("Error crítico cargando el viaje:", err);
             setMensajeGeneral({ tipo: 'error', texto: 'Error al cargar los datos del viaje.' });
             setLoading(false);
         }
     };
 
-    const listaParticipantes = viaje?.participantes || [{ id: 1, name: 'juanma' }];
+    const listaParticipantes = viaje?.participantes || [];
 
     const toggleParticipante = (pId) => {
-        
         if (participantesSeleccionados.includes(pId)) {
             setParticipantesSeleccionados(participantesSeleccionados.filter(id => id !== pId));
         } else {
@@ -106,10 +95,7 @@ const GestionViaje = () => {
     };
 
     const totalGastado = gastos.reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
-    const numeroDePersonas = listaParticipantes.length || 1;
-    const gastoPorPersona = totalGastado / numeroDePersonas;
 
-    //  usar participantes por gasto
     const calcularSaldos = () => {
         let saldos = {};
         listaParticipantes.forEach(p => saldos[p.name] = 0);
@@ -123,14 +109,10 @@ const GestionViaje = () => {
             if (numParticipantes === 0) return;
 
             const partePorPersona = parseFloat(g.amount) / numParticipantes;
-
-            // El pagador suma lo que pagó
             const pagador = listaParticipantes.find(p => p.id === g.pagador_id);
             if (pagador && saldos[pagador.name] !== undefined) {
                 saldos[pagador.name] += parseFloat(g.amount);
             }
-
-            // Cada participante resta su parte
             participantesGasto.forEach(participanteId => {
                 const participante = listaParticipantes.find(p => p.id === participanteId);
                 if (participante && saldos[participante.name] !== undefined) {
@@ -138,33 +120,25 @@ const GestionViaje = () => {
                 }
             });
         });
-
         return saldos;
     };
 
     const calcularTransferencias = () => {
         const saldos = { ...calcularSaldos() };
-        let deudores = [];
-        let acreedores = [];
+        let deudores = [], acreedores = [];
 
         Object.keys(saldos).forEach(persona => {
             if (saldos[persona] < -0.01) deudores.push({ name: persona, monto: -saldos[persona] });
             else if (saldos[persona] > 0.01) acreedores.push({ name: persona, monto: saldos[persona] });
         });
 
-        let transferencias = [];
-        let i = 0, j = 0;
-
+        let transferencias = [], i = 0, j = 0;
         while (i < deudores.length && j < acreedores.length) {
-            let deudor = deudores[i];
-            let acreedor = acreedores[j];
+            let deudor = deudores[i], acreedor = acreedores[j];
             let montoMinimo = Math.min(deudor.monto, acreedor.monto);
-
             transferencias.push({ de: deudor.name, a: acreedor.name, cantidad: montoMinimo });
-
             deudor.monto -= montoMinimo;
             acreedor.monto -= montoMinimo;
-
             if (deudor.monto < 0.01) i++;
             if (acreedor.monto < 0.01) j++;
         }
@@ -174,28 +148,16 @@ const GestionViaje = () => {
     const añadirGasto = async (e) => {
         e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
-
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            navigate('/login');
-            return;
-        }
-
-        if (participantesSeleccionados.length === 0) {
-            setMensajeGeneral({ tipo: 'error', texto: 'Debes seleccionar al menos un participante.' });
-            return;
-        }
+        if (participantesSeleccionados.length === 0) { setMensajeGeneral({ tipo: 'error', texto: 'Selecciona al menos un participante.' }); return; }
 
         try {
             await api.post(`/trips/${id}/expenses`, {
-                description: descripcion,
-                amount: parseFloat(monto),
-                user_id: parseInt(pagadorId),
-                participantes: participantesSeleccionados
+                description: descripcion, amount: parseFloat(monto),
+                user_id: parseInt(pagadorId), participantes: participantesSeleccionados
             });
             cargarDatosDeViaje();
-            setDescripcion('');
-            setMonto('');
-            setMensajeGeneral({ tipo: 'exito', texto: '¡Gasto registrado correctamente!' });
+            setDescripcion(''); setMonto('');
+            setMensajeGeneral({ tipo: 'exito', texto: '¡Gasto registrado!' });
         } catch (error) {
             setMensajeGeneral({ tipo: 'error', texto: 'Error al guardar el gasto.' });
         }
@@ -203,15 +165,7 @@ const GestionViaje = () => {
 
     const enviarMensajeChat = async (e) => {
         e.preventDefault();
-        setMensajeGeneral({ tipo: '', texto: '' });
-        
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            navigate('/login');
-            return;
-        }
-        
         if (!nuevoMensaje.trim()) return;
-        
         try {
             const res = await api.post(`/trips/${id}/messages`, { message: nuevoMensaje });
             setMensajes([...mensajes, res.data]);
@@ -223,55 +177,160 @@ const GestionViaje = () => {
 
     const añadirActividad = async (e) => {
         e.preventDefault();
-        setMensajeGeneral({ tipo: '', texto: '' });
-
-        if (!localStorage.getItem('ACCESS_TOKEN')) {
-            navigate('/login');
-            return;
-        }
-
         const tituloAct = e.target.elements.tituloAct.value;
-        const horaAct = e.target.elements.horaAct.value; 
-        const fechaCompleta = `${dia} ${horaAct}:00`;
-
+        const horaAct = e.target.elements.horaAct.value;
         try {
             const res = await api.post(`/trips/${id}/activities`, {
-                title: tituloAct,
-                description: 'Actividad programada',
-                scheduled_at: fechaCompleta
+                title: tituloAct, description: 'Actividad programada',
+                scheduled_at: `${dia} ${horaAct}:00`
             });
             setPlanes([...planes, res.data]);
-            e.target.reset();
-            setDia(''); 
-            setMensajeGeneral({ tipo: 'exito', texto: '¡Actividad añadida al itinerario!' });
+            e.target.reset(); setDia('');
+            setMensajeGeneral({ tipo: 'exito', texto: '¡Actividad añadida!' });
         } catch (error) {
             setMensajeGeneral({ tipo: 'error', texto: 'Error al guardar la actividad.' });
         }
     };
 
-    const cambiarTab = (nuevoTab) => {
-        setTab(nuevoTab);
+    // ✅ NUEVO: Función para registrar un hotel en la base de datos
+    const registrarHotel = async (e) => {
+        e.preventDefault();
         setMensajeGeneral({ tipo: '', texto: '' });
+        const form = e.target.elements;
+
+        try {
+            const res = await api.post(`/trips/${id}/hotels`, {
+                name: form.hotelNombre.value,
+                address: form.hotelDireccion.value,
+                booking_url: form.hotelUrl.value,
+                check_in: form.hotelIn.value,
+                check_out: form.hotelOut.value,
+            });
+            setHoteles([...hoteles, res.data]);
+            e.target.reset();
+            setMensajeGeneral({ tipo: 'exito', texto: '¡Alojamiento registrado correctamente!' });
+        } catch (error) {
+            setMensajeGeneral({ tipo: 'error', texto: 'Error al guardar el alojamiento.' });
+        }
     };
 
-    if (loading) return <div style={styles.loading}>Sincronizando la escapada con el servidor...</div>;
-    if (!viaje) return <div style={styles.loading}>El viaje no pudo ser procesado.</div>;
+    const expulsarMiembro = (userId, userName) => {
+        setDialogoConfirmacion({
+            visible: true,
+            mensaje: `¿Seguro que quieres expulsar a ${userName}?`,
+            accionConfirmada: async () => {
+                try {
+                    await api.post(`/trips/${id}/expulsar/${userId}`);
+                    setMensajeGeneral({ tipo: 'exito', texto: `${userName} ha sido expulsado.` });
+                    cargarDatosDeViaje();
+                } catch (err) {
+                    setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.message || 'Error al expulsar.' });
+                }
+            }
+        });
+    };
+
+    const transferirRol = (userId, userName) => {
+        setDialogoConfirmacion({
+            visible: true,
+            mensaje: `¿Transferir el rol de organizador a ${userName}? Tú pasarás a ser viajero.`,
+            accionConfirmada: async () => {
+                try {
+                    await api.post(`/trips/${id}/transferir-rol/${userId}`);
+                    setMensajeGeneral({ tipo: 'exito', texto: `Rol transferido a ${userName}.` });
+                    cargarDatosDeViaje();
+                } catch (err) {
+                    setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.message || 'Error al transferir rol.' });
+                }
+            }
+        });
+    };
+
+    const abandonarViaje = () => {
+        setDialogoConfirmacion({
+            visible: true,
+            mensaje: '¿Seguro que quieres abandonar este viaje?',
+            accionConfirmada: async () => {
+                try {
+                    await api.post(`/trips/${id}/abandonar`);
+                    navigate('/viajes');
+                } catch (err) {
+                    setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.message || 'Error al abandonar.' });
+                }
+            }
+        });
+    };
+
+    const borrarViaje = () => {
+        setDialogoConfirmacion({
+            visible: true,
+            mensaje: '¿Seguro que quieres BORRAR este viaje? Esta acción es irreversible.',
+            accionConfirmada: async () => {
+                try {
+                    await api.delete(`/trips/${id}`);
+                    navigate('/viajes');
+                } catch (err) {
+                    setMensajeGeneral({ tipo: 'error', texto: err.response?.data?.message || 'Error al borrar.' });
+                }
+            }
+        });
+    };
+
+    const guardarEdicion = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put(`/trips/${id}/editar`, datosEdicion);
+            setMensajeGeneral({ tipo: 'exito', texto: 'Viaje actualizado correctamente.' });
+            setEditandoViaje(false);
+            cargarDatosDeViaje();
+        } catch (err) {
+            setMensajeGeneral({ tipo: 'error', texto: 'Error al actualizar el viaje.' });
+        }
+    };
+
+    const cambiarTab = (nuevoTab) => { setTab(nuevoTab); setMensajeGeneral({ tipo: '', texto: '' }); };
+
+    if (loading) return <div style={styles.loading}>Sincronizando la escapada...</div>;
+    if (!viaje) return <div style={styles.loading}>El viaje no pudo cargarse.</div>;
 
     const saldosCalculados = calcularSaldos();
     const transferenciasCalculadas = calcularTransferencias();
 
     return (
         <div style={styles.container}>
-            <div style={styles.hero}>
-                <span style={styles.badge}>📍 {viaje.destination}</span>
-                <h1 style={styles.title}>{viaje.title}</h1>
-                <p style={styles.dates}>Fondo total: <strong style={{ color: 'var(--primary)' }}>{totalGastado.toFixed(2)}€</strong></p>
+            
+            {/* CABECERA CON IMAGEN DE FONDO ADAPTABLE */}
+            <div style={{
+                ...styles.hero,
+                backgroundImage: viaje.image_url 
+                    ? `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url("${viaje.image_url}")` 
+                    : `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                border: 'none'
+            }}>
+                <div style={{ marginBottom: '10px' }}>
+                    <span style={styles.badge}>📍 {viaje.destination}</span>
+                    <span style={{ ...styles.badge, backgroundColor: miRol === 'organizador' ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.15)', marginLeft: '10px' }}>
+                        {miRol === 'organizador' ? '👑 Organizador' : '🧳 Viajero'}
+                    </span>
+                </div>
+                
+                <h1 style={{ ...styles.title, color: '#ffffff', textShadow: '0 2px 5px rgba(0,0,0,0.6)' }}>
+                    {viaje.title}
+                </h1>
+                
+                <p style={styles.dates}>
+                    Fondo total: <strong style={{ color: '#66b2ff', textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>{totalGastado.toFixed(2)}€</strong>
+                </p>
             </div>
 
+            {/* TABS PRINCIPALES */}
             <div style={styles.tabBar}>
-                <button style={tab === 'finanzas' ? styles.tabActive : styles.tab} onClick={() => cambiarTab('finanzas')}>💰 Gastos Compartidos</button>
+                <button style={tab === 'finanzas' ? styles.tabActive : styles.tab} onClick={() => cambiarTab('finanzas')}>💰 Gastos</button>
                 <button style={tab === 'itinerario' ? styles.tabActive : styles.tab} onClick={() => cambiarTab('itinerario')}>🗓️ Itinerario</button>
                 <button style={tab === 'chat' ? styles.tabActive : styles.tab} onClick={() => cambiarTab('chat')}>💬 Chat</button>
+                <button style={tab === 'miembros' ? styles.tabActive : styles.tab} onClick={() => cambiarTab('miembros')}>👥 Miembros</button>
             </div>
 
             {mensajeGeneral.texto && (
@@ -287,13 +346,14 @@ const GestionViaje = () => {
             )}
 
             <div style={styles.contentSection}>
-                
+
+                {/* --- SECCIÓN FINANZAS --- */}
                 {tab === 'finanzas' && (
                     <div>
                         <div style={styles.subTabBar}>
-                            <button style={subTabFinanzas === 'gastos' ? styles.subTabActive : styles.subTab} onClick={() => {setSubTabFinanzas('gastos'); setMensajeGeneral({tipo:'', texto:''});}}>📝 Lista de Gastos</button>
-                            <button style={subTabFinanzas === 'saldos' ? styles.subTabActive : styles.subTab} onClick={() => {setSubTabFinanzas('saldos'); setMensajeGeneral({tipo:'', texto:''});}}>📊 Balances</button>
-                            <button style={subTabFinanzas === 'transferencias' ? styles.subTabActive : styles.subTab} onClick={() => {setSubTabFinanzas('transferencias'); setMensajeGeneral({tipo:'', texto:''});}}>🤝 Bizums Necesarios</button>
+                            <button style={subTabFinanzas === 'gastos' ? styles.subTabActive : styles.subTab} onClick={() => setSubTabFinanzas('gastos')}>📝 Gastos</button>
+                            <button style={subTabFinanzas === 'saldos' ? styles.subTabActive : styles.subTab} onClick={() => setSubTabFinanzas('saldos')}>📊 Balances</button>
+                            <button style={subTabFinanzas === 'transferencias' ? styles.subTabActive : styles.subTab} onClick={() => setSubTabFinanzas('transferencias')}>🤝 Bizums</button>
                         </div>
 
                         {subTabFinanzas === 'gastos' && (
@@ -301,54 +361,40 @@ const GestionViaje = () => {
                                 <div style={styles.card}>
                                     <h3 style={styles.cardTitle}>➕ Registrar Gasto</h3>
                                     <form onSubmit={añadirGasto} style={styles.form}>
-                                        <input type="text" placeholder="¿En qué se gastó el dinero?" value={descripcion} onChange={e => setDescripcion(e.target.value)} required style={styles.input} />
-                                        <input type="number" step="0.01" placeholder="Monto total (€)" value={monto} onChange={e => setMonto(e.target.value)} required style={styles.input} />
-                                        
+                                        <input type="text" placeholder="¿En qué se gastó?" value={descripcion} onChange={e => setDescripcion(e.target.value)} required style={styles.input} />
+                                        <input type="number" step="0.01" placeholder="Monto (€)" value={monto} onChange={e => setMonto(e.target.value)} required style={styles.input} />
                                         <label style={styles.label}>¿Quién pagó?</label>
                                         <select value={pagadorId} onChange={e => setPagadorId(e.target.value)} style={styles.input}>
-                                            {listaParticipantes.map(p => (
-                                                <option key={p.id} value={p.id}>Pagó: {p.name}</option>
-                                            ))}
+                                            {listaParticipantes.map(p => <option key={p.id} value={p.id}>Pagó: {p.name}</option>)}
                                         </select>
-                                        
                                         <label style={styles.label}>¿Quiénes participan?</label>
                                         <div style={styles.checkboxContainer}>
                                             <label style={styles.checkboxLabel}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={participantesSeleccionados.length === listaParticipantes.length} 
-                                                    onChange={toggleTodos} 
-                                                />
-                                                <strong>Todos los miembros</strong>
+                                                <input type="checkbox" checked={participantesSeleccionados.length === listaParticipantes.length} onChange={toggleTodos} />
+                                                <strong>Todos</strong>
                                             </label>
                                             {listaParticipantes.map(p => (
                                                 <label key={p.id} style={styles.checkboxLabel}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={participantesSeleccionados.includes(p.id)} 
-                                                        onChange={() => toggleParticipante(p.id)} 
-                                                    />
+                                                    <input type="checkbox" checked={participantesSeleccionados.includes(p.id)} onChange={() => toggleParticipante(p.id)} />
                                                     {p.name}
                                                 </label>
                                             ))}
                                         </div>
-
-                                        <button type="submit" style={styles.btnPrimary}>Guardar Registro</button>
+                                        <button type="submit" style={styles.btnPrimary}>Guardar Gasto</button>
                                     </form>
                                 </div>
                                 <div style={styles.card}>
-                                    <h3 style={styles.cardTitle}>📋 Historial de Cuentas</h3>
+                                    <h3 style={styles.cardTitle}>📋 Historial</h3>
                                     {gastos.length === 0 ? <p style={styles.noData}>No hay gastos registrados.</p> : (
                                         <ul style={styles.list}>
                                             {gastos.map(g => (
                                                 <li key={g.id} style={styles.listItem}>
                                                     <div>
-                                                        <strong style={{ color: 'var(--text-main)', wordBreak: 'break-word' }}>{g.descripcion || g.description}</strong>
-                                                        <small style={styles.blockTime}>Abonado por: <b>{g.pagador_name || 'Usuario'}</b></small>
-                                                        {/* ✅ Mostramos cuántos participaron */}
+                                                        <strong style={{ color: 'var(--text-main)' }}>{g.descripcion || g.description}</strong>
+                                                        <small style={styles.blockTime}>Pagó: <b>{g.pagador_name}</b></small>
                                                         {g.participantes && <small style={styles.blockTime}>Participantes: <b>{g.participantes.length}</b></small>}
                                                     </div>
-                                                    <span style={styles.amountText}>{parseFloat(g.amount || g.monto).toFixed(2)}€</span>
+                                                    <span style={styles.amountText}>{parseFloat(g.amount).toFixed(2)}€</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -359,15 +405,15 @@ const GestionViaje = () => {
 
                         {subTabFinanzas === 'saldos' && (
                             <div style={{...styles.card, maxWidth: '600px', margin: '0 auto'}}>
-                                <h3 style={styles.cardTitle}>📊 Estado de Balances</h3>
+                                <h3 style={styles.cardTitle}>📊 Balances</h3>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px'}}>
                                     {Object.keys(saldosCalculados).map(persona => {
                                         const saldo = saldosCalculados[persona];
                                         const esPositivo = saldo >= 0;
                                         return (
                                             <div key={persona} style={{...styles.balanceRow, borderLeft: `4px solid ${esPositivo ? '#00a651' : '#e13c3c'}`}}>
-                                                <span style={{ color: 'var(--text-main)' }}>👤 <b>{persona}</b></span>
-                                                <span style={{fontWeight: '700', color: esPositivo ? '#00a651' : '#e13c3c', textAlign: 'right'}}>
+                                                <span>👤 <b>{persona}</b></span>
+                                                <span style={{fontWeight: '700', color: esPositivo ? '#00a651' : '#e13c3c'}}>
                                                     {esPositivo ? `Le deben: +${saldo.toFixed(2)}€` : `Debe: ${Math.abs(saldo).toFixed(2)}€`}
                                                 </span>
                                             </div>
@@ -381,12 +427,12 @@ const GestionViaje = () => {
                             <div style={{...styles.card, maxWidth: '600px', margin: '0 auto'}}>
                                 <h3 style={styles.cardTitle}>🤝 Bizums sugeridos</h3>
                                 {transferenciasCalculadas.length === 0 ? (
-                                    <p style={{...styles.noData, color: '#00a651', fontWeight: '700'}}>🎉 ¡Cuentas claras! Nadie le debe a nadie.</p>
+                                    <p style={{...styles.noData, color: '#00a651', fontWeight: '700'}}>🎉 ¡Cuentas claras!</p>
                                 ) : (
                                     <div style={{marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px'}}>
                                         {transferenciasCalculadas.map((t, idx) => (
                                             <div key={idx} style={styles.transferCard}>
-                                                📱 <b>{t.de}</b> debe enviarle un Bizum a <b>{t.a}</b> de <span style={{fontWeight:'800', color:'var(--primary)'}}>{t.cantidad.toFixed(2)}€</span>
+                                                📱 <b>{t.de}</b> → <b>{t.a}</b>: <span style={{fontWeight:'800', color:'var(--primary)'}}>{t.cantidad.toFixed(2)}€</span>
                                             </div>
                                         ))}
                                     </div>
@@ -396,36 +442,95 @@ const GestionViaje = () => {
                     </div>
                 )}
 
+                {/* --- SECCIÓN ITINERARIO (CON SUB-TABS NUEVOS) --- */}
                 {tab === 'itinerario' && (
-                    <div style={styles.gridTwoColumns}>
-                        <div style={styles.card}>
-                            <h3 style={styles.cardTitle}>➕ Programar Plan</h3>
-                            <form onSubmit={añadirActividad} style={styles.form}>
-                                <input type="text" name="tituloAct" placeholder="Ej: Cena en el centro..." required style={styles.input} />
-                                <label style={styles.label}>Día de la actividad</label>
-                                <input type="date" value={dia} onChange={(e) => setDia(e.target.value)} required style={styles.input} />
-                                <label style={styles.label}>Hora programada</label>
-                                <input type="time" name="horaAct" required style={styles.input} />
-                                <button type="submit" style={styles.btnPrimary}>Añadir al Cronograma</button>
-                            </form>
+                    <div>
+                        {/* SUB-TABS INTERNOS DE ITINERARIO */}
+                        <div style={styles.subTabBar}>
+                            <button style={subTabItinerario === 'actividades' ? styles.subTabActive : styles.subTab} onClick={() => setSubTabItinerario('actividades')}>🎯 Actividades</button>
+                            <button style={subTabItinerario === 'hoteles' ? styles.subTabActive : styles.subTab} onClick={() => setSubTabItinerario('hoteles')}>🏨 Alojamiento</button>
                         </div>
-                        <div style={styles.card}>
-                            <h3 style={styles.cardTitle}>⏱️ Agenda de Actividades</h3>
-                            {planes.length === 0 ? (
-                                <p style={styles.noData}>Aún no hay actividades planificadas.</p>
-                            ) : (
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px'}}>
-                                    {planes.map(p => (
-                                        <div key={p.id} style={{...styles.balanceRow, borderLeft: '4px solid var(--primary)'}}>
-                                            <span style={{ color: 'var(--text-main)' }}>⏰ <b>{p.hora || (p.scheduled_at ? p.scheduled_at.substring(11, 16) : '00:00')} h</b> - {p.title}</span>
-                                        </div>
-                                    ))}
+
+                        {/* SUB-TAB: ACTIVIDADES */}
+                        {subTabItinerario === 'actividades' && (
+                            <div style={styles.gridTwoColumns}>
+                                <div style={styles.card}>
+                                    <h3 style={styles.cardTitle}>➕ Programar Plan</h3>
+                                    <form onSubmit={añadirActividad} style={styles.form}>
+                                        <input type="text" name="tituloAct" placeholder="Ej: Cena en el centro..." required style={styles.input} />
+                                        <label style={styles.label}>Día</label>
+                                        <input type="date" value={dia} onChange={e => setDia(e.target.value)} required style={styles.input} />
+                                        <label style={styles.label}>Hora</label>
+                                        <input type="time" name="horaAct" required style={styles.input} />
+                                        <button type="submit" style={styles.btnPrimary}>Añadir al Cronograma</button>
+                                    </form>
                                 </div>
-                            )}
-                        </div>
+                                <div style={styles.card}>
+                                    <h3 style={styles.cardTitle}>⏱️ Agenda</h3>
+                                    {planes.length === 0 ? <p style={styles.noData}>No hay actividades planificadas.</p> : (
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                            {planes.map(p => (
+                                                <div key={p.id} style={styles.itemRow}>
+                                                    <span>⏰ <b>{p.scheduled_at ? p.scheduled_at.substring(11, 16) : '00:00'} h</b> - {p.title}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SUB-TAB: HOTELES (ALOJAMIENTO) */}
+                        {subTabItinerario === 'hoteles' && (
+                            <div style={styles.gridTwoColumns}>
+                                <div style={styles.card}>
+                                    <h3 style={styles.cardTitle}>🏨 Registrar Alojamiento</h3>
+                                    <form onSubmit={registrarHotel} style={styles.form}>
+                                        <input type="text" name="hotelNombre" placeholder="Nombre del hotel / apartamento" required style={styles.input} />
+                                        <input type="text" name="hotelDireccion" placeholder="Dirección física" style={styles.input} />
+                                        <input type="url" name="hotelUrl" placeholder="Enlace de reserva (Booking, Airbnb, etc.)" style={styles.input} />
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={styles.label}>Fecha Check-in</label>
+                                                <input type="date" name="hotelIn" required style={styles.input} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label style={styles.label}>Fecha Check-out</label>
+                                                <input type="date" name="hotelOut" required style={styles.input} />
+                                            </div>
+                                        </div>
+                                        <button type="submit" style={styles.btnPrimary}>Guardar Hotel</button>
+                                    </form>
+                                </div>
+                                <div style={styles.card}>
+                                    <h3 style={styles.cardTitle}>🛌 Alojamientos Guardados</h3>
+                                    {hoteles.length === 0 ? <p style={styles.noData}>No hay alojamientos registrados aún.</p> : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                            {hoteles.map(h => (
+                                                <div key={h.id} style={{ ...styles.itemRow, flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                                                        <strong style={{ fontSize: '16px', color: 'var(--text-main)' }}>🏢 {h.name}</strong>
+                                                        {h.booking_url && (
+                                                            <a href={h.booking_url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>
+                                                                🔗 Enlace
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <small style={{ color: 'var(--text-muted)' }}>📍 {h.address || 'Sin dirección especificada'}</small>
+                                                    <div style={{ marginTop: '5px', fontSize: '13px', fontWeight: 'bold', color: 'var(--primary)' }}>
+                                                        📅 {h.check_in} al {h.check_out}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
+                {/* --- SECCIÓN CHAT --- */}
                 {tab === 'chat' && (
                     <div style={{...styles.card, maxWidth: '700px', margin: '0 auto'}}>
                         <h3 style={styles.cardTitle}>💬 Chat de la Escapada</h3>
@@ -434,7 +539,7 @@ const GestionViaje = () => {
                                 mensajes.map(msg => (
                                     <div key={msg.id} style={styles.chatBubble}>
                                         <small style={styles.chatUser}>{msg.user_name || 'Amigo'}</small>
-                                        <div style={{ color: 'var(--text-main)', wordBreak: 'break-word' }}>{msg.message}</div>
+                                        <div style={{ wordBreak: 'break-word' }}>{msg.message}</div>
                                     </div>
                                 ))
                             )}
@@ -445,7 +550,104 @@ const GestionViaje = () => {
                         </form>
                     </div>
                 )}
+
+                {/* --- SECCIÓN MIEMBROS --- */}
+                {tab === 'miembros' && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                        {miRol === 'organizador' && (
+                            <div style={styles.card}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                                    <h3 style={styles.cardTitle}>✏️ Datos del Viaje</h3>
+                                    <button onClick={() => setEditandoViaje(!editandoViaje)} style={styles.btnSecondary}>
+                                        {editandoViaje ? 'Cancelar' : 'Editar'}
+                                    </button>
+                                </div>
+                                {editandoViaje ? (
+                                    <form onSubmit={guardarEdicion} style={styles.form}>
+                                        <input type="text" placeholder="Título" value={datosEdicion.title} onChange={e => setDatosEdicion({...datosEdicion, title: e.target.value})} style={styles.input} />
+                                        <input type="text" placeholder="Destino" value={datosEdicion.destination} onChange={e => setDatosEdicion({...datosEdicion, destination: e.target.value})} style={styles.input} />
+                                        <input type="date" value={datosEdicion.start_date} onChange={e => setDatosEdicion({...datosEdicion, start_date: e.target.value})} style={styles.input} />
+                                        <input type="date" value={datosEdicion.end_date} onChange={e => setDatosEdicion({...datosEdicion, end_date: e.target.value})} style={styles.input} />
+                                        <button type="submit" style={styles.btnPrimary}>💾 Guardar Cambios</button>
+                                    </form>
+                                ) : (
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                        <p style={{margin: 0}}>📍 <b>Destino:</b> {viaje.destination}</p>
+                                        <p style={{margin: 0}}>📅 <b>Inicio:</b> {viaje.start_date}</p>
+                                        <p style={{margin: 0}}>📅 <b>Fin:</b> {viaje.end_date}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div style={styles.card}>
+                            <h3 style={styles.cardTitle}>👥 Miembros del Viaje</h3>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                {listaParticipantes.map(p => (
+                                    <div key={p.id} style={{...styles.balanceRow, flexWrap: 'wrap', gap: '10px'}}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                                            <div style={styles.avatarMini}>{p.name.substring(0,2).toUpperCase()}</div>
+                                            <div>
+                                                <strong>{p.name}</strong>
+                                                <small style={{display: 'block', color: 'var(--text-muted)'}}>
+                                                    {p.role === 'organizador' ? '👑 Organizador' : '🧳 Viajero'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {miRol === 'organizador' && p.role !== 'organizador' && (
+                                            <div style={{display: 'flex', gap: '8px', marginLeft: 'auto'}}>
+                                                <button onClick={() => transferirRol(p.id, p.name)} style={styles.btnWarning}>👑 Hacer Organizador</button>
+                                                <button onClick={() => expulsarMiembro(p.id, p.name)} style={styles.btnDanger}>❌ Expulsar</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={styles.card}>
+                            <h3 style={{...styles.cardTitle, color: '#e13c3c'}}>⚠️ Zona de Peligro</h3>
+                            <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                                {miRol !== 'organizador' && (
+                                    <button onClick={abandonarViaje} style={styles.btnDanger}>🚪 Abandonar Viaje</button>
+                                )}
+                                {miRol === 'organizador' && (
+                                    <button onClick={borrarViaje} style={styles.btnDanger}>🗑️ Borrar Viaje</button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* MODAL DE CONFIRMACIÓN ELEGANTE */}
+            {dialogoConfirmacion.visible && (
+                <div style={styles.modalOverlay}>
+                    <div style={styles.modalBox}>
+                        <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '20px' }}>⚠️ Confirmación requerida</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '16px', marginBottom: '25px' }}>
+                            {dialogoConfirmacion.mensaje}
+                        </p>
+                        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                            <button 
+                                onClick={() => setDialogoConfirmacion({ visible: false, mensaje: '', accionConfirmada: null })} 
+                                style={styles.btnCancelarModal}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    dialogoConfirmacion.accionConfirmada();
+                                    setDialogoConfirmacion({ visible: false, mensaje: '', accionConfirmada: null });
+                                }} 
+                                style={styles.btnConfirmarModal}
+                            >
+                                Sí, estoy seguro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -453,29 +655,32 @@ const GestionViaje = () => {
 const styles = {
     container: { maxWidth: '1100px', margin: '0 auto', padding: '20px 15px', fontFamily: 'var(--sans)', width: '100%', boxSizing: 'border-box' },
     loading: { textAlign: 'center', padding: '50px', color: 'var(--text-muted)', fontSize: '16px', fontWeight: '600' },
-    hero: { backgroundColor: 'var(--bg-nav)', borderRadius: 'var(--radius-card)', color: 'white', padding: '40px 20px', textAlign: 'center', marginBottom: '30px', boxShadow: 'var(--shadow)', wordBreak: 'break-word' },
-    title: { fontSize: 'clamp(24px, 5vw, 32px)', margin: '15px 0 10px', fontWeight: '800', letterSpacing: '-0.5px' },
+    hero: { borderRadius: 'var(--radius-card)', color: 'white', padding: '40px 20px', textAlign: 'center', marginBottom: '30px', boxShadow: 'var(--shadow)', wordBreak: 'break-word' },
+    title: { fontSize: 'clamp(24px, 5vw, 32px)', margin: '15px 0 10px', fontWeight: '800' },
     badge: { backgroundColor: 'rgba(255,255,255,0.15)', padding: '6px 12px', borderRadius: 'var(--radius-btn)', fontSize: '13px', fontWeight: '600' },
-    dates: { fontSize: '16px', color: 'rgba(255,255,255,0.8)', margin: 0 },
+    dates: { fontSize: '16px', color: 'rgba(255,255,255,0.8)', margin: '10px 0 0 0' },
     tabBar: { display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '30px', flexWrap: 'wrap' },
-    tab: { flex: '1 1 auto', minWidth: '140px', padding: '12px 20px', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', transition: '0.2s', fontSize: '15px' },
-    tabActive: { flex: '1 1 auto', minWidth: '140px', padding: '12px 20px', border: 'none', backgroundColor: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,98,227,0.3)', fontSize: '15px' },
-    subTabBar: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '30px', backgroundColor: '#e1e5ee', padding: '6px', borderRadius: 'var(--radius-btn)', maxWidth: '600px', margin: '0 auto 30px' },
-    subTab: { flex: '1 1 120px', padding: '10px', border: 'none', background: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', borderRadius: 'var(--radius-btn)', color: 'var(--text-muted)', textAlign: 'center', transition: '0.2s' },
-    subTabActive: { flex: '1 1 120px', padding: '10px', border: 'none', backgroundColor: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer', borderRadius: 'var(--radius-btn)', color: 'var(--primary)', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' },
+    tab: { flex: '1 1 auto', minWidth: '120px', padding: '12px 20px', border: 'none', backgroundColor: 'transparent', color: 'var(--text-muted)', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '15px' },
+    tabActive: { flex: '1 1 auto', minWidth: '120px', padding: '12px 20px', border: 'none', backgroundColor: 'var(--primary)', color: 'white', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,98,227,0.3)', fontSize: '15px' },
+    subTabBar: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '30px', backgroundColor: '#e1e5ee', padding: '6px', borderRadius: 'var(--radius-btn)', maxWidth: '400px', margin: '0 auto 30px' },
+    subTab: { flex: '1', padding: '10px', border: 'none', background: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', borderRadius: 'var(--radius-btn)', color: 'var(--text-muted)' },
+    subTabActive: { flex: '1', padding: '10px', border: 'none', backgroundColor: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer', borderRadius: 'var(--radius-btn)', color: 'var(--primary)', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' },
     gridTwoColumns: { display: 'flex', flexWrap: 'wrap', gap: '24px' },
     card: { flex: '1 1 280px', backgroundColor: 'var(--card-bg)', borderRadius: 'var(--radius-card)', padding: 'clamp(15px, 4vw, 30px)', boxShadow: 'var(--shadow)', border: '1px solid #e1e5ee', boxSizing: 'border-box' },
     cardTitle: { fontSize: '18px', marginBottom: '20px', fontWeight: '800', color: 'var(--text-main)', marginTop: 0 },
     form: { display: 'flex', flexDirection: 'column', gap: '16px' },
     input: { padding: '14px 16px', borderRadius: '12px', border: '1px solid #e1e5ee', fontSize: '15px', outline: 'none', backgroundColor: '#fff', color: 'var(--text-main)', width: '100%', boxSizing: 'border-box' },
-    label: { fontSize: '13px', color: 'var(--text-muted)', marginBottom: '-8px', fontWeight: '600', marginTop: '4px' },
-    btnPrimary: { backgroundColor: 'var(--primary)', color: 'white', padding: '16px', border: 'none', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', textAlign: 'center', marginTop: '10px', fontSize: '15px', transition: '0.2s', width: '100%' },
+    label: { fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600' },
+    btnPrimary: { backgroundColor: 'var(--primary)', color: 'white', padding: '16px', border: 'none', borderRadius: 'var(--radius-btn)', fontWeight: '700', cursor: 'pointer', fontSize: '15px', width: '100%', marginTop: '10px' },
+    btnSecondary: { backgroundColor: '#e8f0fe', color: '#1a73e8', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
+    btnWarning: { backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffc107', padding: '8px 14px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' },
+    btnDanger: { backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #f87171', padding: '8px 14px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' },
     list: { listStyle: 'none', padding: 0, margin: 0 },
     listItem: { display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #e1e5ee', alignItems: 'center', gap: '10px' },
     amountText: { fontWeight: '800', color: 'var(--primary)', fontSize: '16px', flexShrink: 0 },
     blockTime: { display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' },
     balanceRow: { display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: 'var(--bg-app)', borderRadius: '12px', fontSize: '15px', alignItems: 'center', gap: '10px' },
-    transferCard: { padding: '16px', backgroundColor: 'rgba(0, 98, 227, 0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)', fontSize: '15px', color: 'var(--text-main)' },
+    transferCard: { padding: '16px', backgroundColor: 'rgba(0,98,227,0.05)', borderRadius: '12px', borderLeft: '4px solid var(--primary)', fontSize: '15px' },
     noData: { textAlign: 'center', color: 'var(--text-muted)', padding: '20px', fontSize: '15px', fontStyle: 'italic' },
     contentSection: { width: '100%' },
     chatBox: { height: '400px', overflowY: 'auto', border: '1px solid #e1e5ee', padding: '20px', borderRadius: '12px', backgroundColor: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: '12px' },
@@ -483,7 +688,15 @@ const styles = {
     chatUser: { display: 'block', fontWeight: '700', color: 'var(--primary)', fontSize: '12px', marginBottom: '4px' },
     chatForm: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' },
     checkboxContainer: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', backgroundColor: 'var(--bg-app)', borderRadius: '12px', border: '1px solid #e1e5ee' },
-    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14.5px', color: 'var(--text-main)', cursor: 'pointer', wordBreak: 'break-word' }
+    checkboxLabel: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14.5px', cursor: 'pointer' },
+    avatarMini: { width: '42px', height: '42px', borderRadius: '50%', background: 'var(--bg-nav)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 },
+    itemRow: { display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: 'var(--bg-app)', borderRadius: '12px', borderLeft: '4px solid var(--primary)', width: '100%', boxSizing: 'border-box' },
+    
+    // Estilos del Modal de confirmación
+    modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
+    modalBox: { backgroundColor: 'var(--card-bg)', padding: '30px', borderRadius: '16px', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' },
+    btnCancelarModal: { padding: '12px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#e1e5ee', color: 'var(--text-main)', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
+    btnConfirmarModal: { padding: '12px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#dc2626', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }
 };
 
 export default GestionViaje;
