@@ -138,4 +138,35 @@ class ExpenseController extends Controller
         $expense->delete();
         return response()->json(['message' => 'Gasto eliminado']);
     }
+    public function pagarTransferencia(Request $request, $id)
+    {
+        $request->validate([
+            'pagador_name'     => 'required|string',
+            'receptor_name'    => 'required|string',
+            'cantidad'         => 'required|numeric',
+            'payment_method'   => 'required|string', // 'bizum' o 'tarjeta'
+        ]);
+
+        // Marcamos como pagados los expense_participants donde el pagador debe al receptor
+        $participantesDeudores = DB::table('expense_participants')
+            ->join('expenses', 'expense_participants.expense_id', '=', 'expenses.id')
+            ->join('users as pagador', 'expenses.payer_id', '=', 'pagador.id')
+            ->join('users as deudor', 'expense_participants.user_id', '=', 'deudor.id')
+            ->where('expenses.trip_id', $id)
+            ->where('deudor.name', $request->pagador_name)
+            ->where('pagador.name', $request->receptor_name)
+            ->where('expense_participants.paid', false)
+            ->select('expense_participants.id')
+            ->get();
+
+        foreach ($participantesDeudores as $p) {
+            DB::table('expense_participants')->where('id', $p->id)->update([
+                'paid'           => true,
+                'payment_method' => $request->payment_method,
+                'paid_at'        => now()
+            ]);
+        }
+
+        return response()->json(['message' => 'Pago registrado correctamente.']);
+    }
 }

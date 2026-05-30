@@ -73,4 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/trips/{trip}/hotels', [HotelController::class, 'getHotels']);
     Route::post('/trips/{trip}/hotels', [HotelController::class, 'storeHotel']);
+
+    Route::post('/trips/{id}/pagar-transferencia', [ExpenseController::class, 'pagarTransferencia']);
+    Route::get('/user/tarjetas', [AuthController::class, 'getTarjetas']);
+    Route::post('/user/tarjetas', [AuthController::class, 'guardarTarjeta']);
+    Route::delete('/user/tarjetas/{cardId}', [AuthController::class, 'eliminarTarjeta']);
     });

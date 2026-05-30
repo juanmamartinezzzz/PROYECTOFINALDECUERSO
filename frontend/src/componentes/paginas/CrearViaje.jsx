@@ -17,7 +17,7 @@ const CrearViaje = () => {
     const [amigos, setAmigos] = useState([]);
     const [mensajeGeneral, setMensajeGeneral] = useState({ tipo: '', texto: '' });
     const [cargando, setCargando] = useState(false);
-    // ✅ Estados para la imagen
+
     const [imagenFile, setImagenFile] = useState(null);
     const [previewImagen, setPreviewImagen] = useState(null);
 

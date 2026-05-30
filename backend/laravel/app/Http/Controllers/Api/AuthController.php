@@ -183,4 +183,41 @@ class AuthController extends Controller
             'user' => $user
         ], 200);
     }
+    public function getTarjetas()
+    {
+        $userId = Auth::id();
+        $tarjetas = DB::table('saved_cards')->where('user_id', $userId)->get();
+        return response()->json($tarjetas);
+    }
+
+    public function guardarTarjeta(Request $request)
+    {
+        $request->validate([
+            'card_holder'      => 'required|string',
+            'card_number_last4'=> 'required|string|size:4',
+            'card_expiry'      => 'required|string',
+            'card_type'        => 'required|string',
+        ]);
+
+        $userId = Auth::id();
+
+        $id = DB::table('saved_cards')->insertGetId([
+            'user_id'           => $userId,
+            'card_holder'       => $request->card_holder,
+            'card_number_last4' => $request->card_number_last4,
+            'card_expiry'       => $request->card_expiry,
+            'card_type'         => $request->card_type,
+            'created_at'        => now(),
+            'updated_at'        => now()
+        ]);
+
+        return response()->json(['message' => 'Tarjeta guardada.', 'id' => $id], 201);
+    }
+
+    public function eliminarTarjeta($cardId)
+    {
+        $userId = Auth::id();
+        DB::table('saved_cards')->where('id', $cardId)->where('user_id', $userId)->delete();
+        return response()->json(['message' => 'Tarjeta eliminada.']);
+    }
 }
